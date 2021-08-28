@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gauge Chart</title>
+  <script src="https://blocklypro.webduino.io/dist/lib/webduino-all-0.4.20.min.js?rev=4426739c00d85325cb2d3d701fa50666"></script>
+  <script src="https://blocklypro.webduino.io/node_modules/webduino-module-mqtt/mqttClient.min.js"></script>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+</head>
+
+<body>
+  <div id="chart_div" style="width: 400px; height: 120px;"></div>
+  <script type="text/javascript">
+  (async function () {
+    google.charts.load('current', { 'packages': ['gauge'] });
+    google.charts.setOnLoadCallback(drawChart);
+
+    var cfg = location.hash;
+    if (cfg.length > 1) {
+      cfg = JSON.parse(decodeURI(cfg.substring(1)))
+    } else {
+      cfg = {
+        'gauge': 'temp5497'
+      }
+    }
+
+    var gaugeSubName = cfg['gauge'];
+    var data = null,
+      chart, options;
+
+    function drawChart() {
+      data = google.visualization.arrayToDataTable([
+        ['Label', 'Value'],
+        ['光度計', 0]
+      ]);
+      options = {
+        width: 800,
+        height: 240,
+        redFrom: 700,
+        redTo: 1000,
+        yellowFrom: 500,
+        yellowTo: 700,
+        greenFrom: 150,
+        greenTo: 500,
+        min: 0,
+        max: 1000,
+        minorTicks: 5
+      };
+      chart = new google.visualization.Gauge(document.getElementById('chart_div'));
+      chart.draw(data, options);
+    }
+
+    var webduinoBroadcastor = new webduino.module.mqttClient();
+    await webduinoBroadcastor.connect();
+
+    // https://webbit.webduino.io/blockly/?demo=default#byXZNO02DnxqO
+    await webduinoBroadcastor.onMessage(gaugeSubName, async (msg) => {
+      if (data == null) return
+      data.setValue(0, 1, parseInt(msg));
+      chart.draw(data, options);
+    });
+
+    webduinoBroadcastor = new webduino.module.mqttClient();
+    await webduinoBroadcastor.connect();
+
+    webduinoBroadcastor.send({
+      topic: 'my/topic',
+      message: 'Hello'
+    });
+
+  }());
+  </script>
+</body>
+
+</html>
